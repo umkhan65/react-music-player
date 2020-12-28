@@ -18,17 +18,16 @@ const Player = ({
   setCurrentSong,
   setSongs,
 }) => {
-  useEffect(() => {
+  const activeLibraryHandler = (nextPrev) => {
     const newSongs = songs.map((song) => {
-      if (song.id === currentSong.id) {
+      if (song.id === nextPrev.id) {
         return { ...song, active: true };
       } else {
         return { ...song, active: false };
       }
     });
-
     setSongs(newSongs);
-  }, [currentSong]);
+  }
 
   //Event Handlers
   //Play/Pause Song
@@ -46,7 +45,12 @@ const Player = ({
   const timeUpdateHandler = (e) => {
     const currentTime = e.target.currentTime;
     const duration = e.target.duration;
-    setSongInfo({ ...songInfo, currentTime, duration });
+    //Calculate Percentage
+    const roundedCurrent = Math.round(currentTime);
+    const roundedDuration = Math.round(duration);
+    const animationPercentage = Math.round((roundedCurrent/roundedDuration)*100);
+    setSongInfo({ ...songInfo, currentTime, duration, animationPercentage });
+
   };
 
   //play music when clicked from songs library
@@ -73,19 +77,34 @@ const Player = ({
     let currentIndex = songs.findIndex((song) => song.id === currentSong.id);
     if (direction === "skip-forward") {
       setCurrentSong(songs[(currentIndex + 1) % songs.length]);
+      activeLibraryHandler(songs[(currentIndex + 1) % songs.length]);
     } else if (direction === "skip-back") {
       if ((currentIndex - 1) % songs.length === -1) {
         setCurrentSong(songs[songs.length - 1]);
+        activeLibraryHandler(songs[songs.length - 1]);
         return;
       }
       setCurrentSong(songs[(currentIndex - 1) % songs.length]);
+      activeLibraryHandler(songs[(currentIndex - 1) % songs.length]);
     }
   };
+
+  const songEndHandler = () =>{
+    let currentIndex = songs.findIndex((song) => song.id === currentSong.id);
+    setCurrentSong(songs[(currentIndex + 1) % songs.length]);
+  }
+
+  //Add styles
+  const trackAnim = {
+    transform: `translateX(${songInfo.animationPercentage}%)`
+  }
 
   return (
     <div className="player">
       <div className="time-control">
         <p>{getTime(songInfo.currentTime)}</p>
+        
+        <div style={{background:`linear-gradient(to right, ${currentSong.color[0]}, ${currentSong.color[1]})`}} className="track">
         <input
           min={0}
           max={songInfo.duration || 0}
@@ -93,6 +112,9 @@ const Player = ({
           onChange={dragHandler}
           type="range"
         />
+        <div style={trackAnim} className="animate-track"></div>
+        </div>
+        
         <p>{songInfo.duration ? getTime(songInfo.duration) : "0:00"}</p>
       </div>
       <div className="play-control">
@@ -121,6 +143,7 @@ const Player = ({
         onLoadedData={playMusicLoadedHandler}
         ref={audioRef}
         src={currentSong.audio}
+        onEnded={songEndHandler}
       />
     </div>
   );
